@@ -95,12 +95,19 @@ jobs:
           TAG_EXISTS="${{ steps.check_tag.outputs.tag_exists }}"
           TAG="v${{ steps.get_version.outputs.version }}"
 
-          if [[ "$MILESTONE_COMPLETE" != "true" ]]; then
-            echo "🚫 Release blocked: milestone not complete. Close all open issues first."
+          # Tag-exists is the normal outcome of a non-release push: skip
+          # quietly but leave a visible annotation. A NEW version blocked
+          # by its milestone means an intended release didn't happen —
+          # fail the run so it can't go unnoticed.
+          if [[ "$TAG_EXISTS" == "true" ]]; then
+            echo "::notice title=No release::$TAG already released — nothing published. Bump the version in pyproject.toml to cut a release."
+            echo "ℹ️ $TAG already released — nothing published this run." >> "$GITHUB_STEP_SUMMARY"
             echo "should_release=false" >> "$GITHUB_OUTPUT"
-          elif [[ "$TAG_EXISTS" == "true" ]]; then
-            echo "Release $TAG already exists — skipping. Bump the version in pyproject.toml for a new release."
+          elif [[ "$MILESTONE_COMPLETE" != "true" ]]; then
+            echo "::error title=Release blocked::$TAG is a new version but its milestone still has open issues. Close or reassign them, then re-run."
+            echo "🚫 **Release $TAG blocked**: milestone has open issues." >> "$GITHUB_STEP_SUMMARY"
             echo "should_release=false" >> "$GITHUB_OUTPUT"
+            exit 1
           else
             echo "✅ All checks passed — proceeding with release."
             echo "should_release=true" >> "$GITHUB_OUTPUT"
