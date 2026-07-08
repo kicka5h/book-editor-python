@@ -388,7 +388,7 @@ jobs:
       - name: Install butler
         run: |
           curl -fsSL \
-            "https://broth.itch.ovh/butler/linux-amd64/LATEST/archive/default" \
+            "https://broth.itch.zone/butler/linux-amd64/LATEST/archive/default" \
             -o butler.zip
           unzip -q butler.zip
           chmod +x butler
