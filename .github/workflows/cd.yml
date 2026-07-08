@@ -222,7 +222,13 @@ jobs:
           mkdir -p /tmp/tinytex-extract
           tar -xJf /tmp/tinytex.tar.xz -C /tmp/tinytex-extract
           # Locate tlmgr rather than assuming the top-level folder name
-          TLMGR=$(find /tmp/tinytex-extract -type f -path "*/bin/universal-darwin/tlmgr" | head -1)
+          # (-type l too: tlmgr is a symlink in the TeX Live bin dir)
+          TLMGR=$(find /tmp/tinytex-extract \( -type f -o -type l \) -path "*/bin/*/tlmgr" | head -1)
+          if [[ -z "$TLMGR" ]]; then
+            echo "::error::tlmgr not found in extracted TinyTeX; archive layout:"
+            find /tmp/tinytex-extract -maxdepth 4 | head -40
+            exit 1
+          fi
           TINYTEX_DIR=$(dirname "$(dirname "$(dirname "$TLMGR")")")
           "$TLMGR" install geometry fancyhdr hyperref xcolor caption float listings lm booktabs
           mkdir -p dist/Beckit.app/Contents/Resources/tinytex
