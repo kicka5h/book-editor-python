@@ -189,6 +189,8 @@ jobs:
           # Locate tlmgr.bat rather than assuming the top-level folder name
           $tlmgr = Get-ChildItem "$env:TEMP\tinytex-extract" -Recurse -Filter tlmgr.bat | Select-Object -First 1
           $tinytexDir = $tlmgr.Directory.Parent.Parent.FullName
+          # Snapshot tlmgr refuses to install if the repo has a newer tlmgr
+          & $tlmgr.FullName update --self
           & $tlmgr.FullName install geometry fancyhdr hyperref xcolor caption float listings lm booktabs
           Copy-Item -Recurse -Force "$tinytexDir" "dist\Beckit\tinytex"
 
@@ -230,6 +232,8 @@ jobs:
             exit 1
           fi
           TINYTEX_DIR=$(dirname "$(dirname "$(dirname "$TLMGR")")")
+          # Snapshot tlmgr refuses to install if the repo has a newer tlmgr
+          "$TLMGR" update --self
           "$TLMGR" install geometry fancyhdr hyperref xcolor caption float listings lm booktabs
           mkdir -p dist/Beckit.app/Contents/Resources/tinytex
           cp -R "$TINYTEX_DIR/." dist/Beckit.app/Contents/Resources/tinytex/
