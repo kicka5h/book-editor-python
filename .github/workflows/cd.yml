@@ -178,14 +178,18 @@ jobs:
       - name: Download, pre-seed, and embed TinyTeX (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
+        env:
+          TINYTEX_VERSION: v2026.07  # pinned; 'daily' asset names change without notice
         run: |
           Invoke-WebRequest `
-            -Uri "https://github.com/rstudio/tinytex-releases/releases/download/daily/TinyTeX-1.zip" `
-            -OutFile "$env:TEMP\tinytex.zip"
-          Expand-Archive "$env:TEMP\tinytex.zip" -DestinationPath "$env:TEMP\tinytex-extract" -Force
-          $tinytexDir = "$env:TEMP\tinytex-extract\TinyTeX"
-          $tlmgr = "$tinytexDir\bin\windows\tlmgr.bat"
-          & $tlmgr install geometry fancyhdr hyperref xcolor caption float listings lm booktabs
+            -Uri "https://github.com/rstudio/tinytex-releases/releases/download/$env:TINYTEX_VERSION/TinyTeX-1-windows-$env:TINYTEX_VERSION.exe" `
+            -OutFile "$env:TEMP\tinytex.exe"
+          # Windows binaries are 7-Zip self-extracting archives
+          7z x "$env:TEMP\tinytex.exe" -o"$env:TEMP\tinytex-extract" -y | Out-Null
+          # Locate tlmgr.bat rather than assuming the top-level folder name
+          $tlmgr = Get-ChildItem "$env:TEMP\tinytex-extract" -Recurse -Filter tlmgr.bat | Select-Object -First 1
+          $tinytexDir = $tlmgr.Directory.Parent.Parent.FullName
+          & $tlmgr.FullName install geometry fancyhdr hyperref xcolor caption float listings lm booktabs
           Copy-Item -Recurse -Force "$tinytexDir" "dist\Beckit\tinytex"
 
       - name: Build app with flet pack (macOS)
@@ -210,13 +214,17 @@ jobs:
 
       - name: Download, pre-seed, and embed TinyTeX (macOS)
         if: runner.os == 'macOS'
+        env:
+          TINYTEX_VERSION: v2026.07  # pinned; 'daily' asset names change without notice
         run: |
-          curl -fsSL https://github.com/rstudio/tinytex-releases/releases/download/daily/TinyTeX-1.tgz \
-               -o /tmp/tinytex.tgz
+          curl -fsSL "https://github.com/rstudio/tinytex-releases/releases/download/${TINYTEX_VERSION}/TinyTeX-1-darwin-${TINYTEX_VERSION}.tar.xz" \
+               -o /tmp/tinytex.tar.xz
           mkdir -p /tmp/tinytex-extract
-          tar -xzf /tmp/tinytex.tgz -C /tmp/tinytex-extract
-          TINYTEX_DIR="/tmp/tinytex-extract/TinyTeX"
-          "$TINYTEX_DIR/bin/universal-darwin/tlmgr" install geometry fancyhdr hyperref xcolor caption float listings lm booktabs
+          tar -xJf /tmp/tinytex.tar.xz -C /tmp/tinytex-extract
+          # Locate tlmgr rather than assuming the top-level folder name
+          TLMGR=$(find /tmp/tinytex-extract -type f -path "*/bin/universal-darwin/tlmgr" | head -1)
+          TINYTEX_DIR=$(dirname "$(dirname "$(dirname "$TLMGR")")")
+          "$TLMGR" install geometry fancyhdr hyperref xcolor caption float listings lm booktabs
           mkdir -p dist/Beckit.app/Contents/Resources/tinytex
           cp -R "$TINYTEX_DIR/." dist/Beckit.app/Contents/Resources/tinytex/
 
